@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Find campus venues and check their availability.">
+    <meta name="theme-color" content="#126b59">
+    <title>Campus Venues</title>
+    <link
+        rel="stylesheet"
+        href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    >
+    <link rel="stylesheet" href="./venues.css">
+</head>
+<body>
+    <div class="page-shell">
+        <header class="topbar">
+            <a class="brand" href="./" aria-label="Campus Venues home">
+                <span class="brand-mark" aria-hidden="true">CV</span>
+                <span>
+                    <strong>Campus Venues</strong>
+                    <small>Campus space finder</small>
+                </span>
+            </a>
+            <span class="live-indicator"><i></i> Live availability</span>
+        </header>
+
+        <main>
+            <section class="hero">
+                <p class="eyebrow">Find your place on campus</p>
+                <h1>Make space for what matters.</h1>
+                <p>Explore campus venues, check their availability, and find the right place for your next class or study session.</p>
+            </section>
+
+            <section class="summary" aria-label="Venue availability summary">
+                <article class="summary-card">
+                    <span class="summary-icon" aria-hidden="true">⌖</span>
+                    <span><strong id="total-count">—</strong><small>Campus venues</small></span>
+                </article>
+                <article class="summary-card free-card">
+                    <span class="summary-icon" aria-hidden="true">✓</span>
+                    <span><strong id="free-count">—</strong><small>Currently free</small></span>
+                </article>
+                <article class="summary-card occupied-card">
+                    <span class="summary-icon" aria-hidden="true">↗</span>
+                    <span><strong id="occupied-count">—</strong><small>Currently occupied</small></span>
+                </article>
+            </section>
+
+            <section aria-labelledby="map-heading">
+                <div class="section-heading">
+                    <div>
+                        <h2 id="map-heading">Explore the map</h2>
+                        <p>Select a marker or venue to view its location.</p>
+                    </div>
+                    <p class="refresh-meta" id="refresh-status" role="status">Loading venues…</p>
+                </div>
+                <div class="map-panel">
+                    <div id="map" aria-label="Map of campus venues"></div>
+                    <div class="map-footer">
+                        <div class="legend" aria-label="Availability legend">
+                            <span><i class="dot free"></i> Free</span>
+                            <span><i class="dot occupied"></i> Occupied</span>
+                            <span><i class="dot unknown"></i> Unknown</span>
+                        </div>
+                        <span class="refresh-meta" id="last-updated">Waiting for data</span>
+                    </div>
+                </div>
+            </section>
+
+            <section class="venue-section" aria-labelledby="venues-heading">
+                <div class="section-heading browse-heading">
+                    <div>
+                        <h2 id="venues-heading">Browse venues</h2>
+                        <p>Search by name or location, or filter by availability.</p>
+                    </div>
+                    <div class="filters">
+                        <label class="search">
+                            <span aria-hidden="true">⌕</span>
+                            <input id="search-input" type="search" placeholder="Search venues…" autocomplete="off">
+                        </label>
+                        <select id="status-filter" aria-label="Filter venues by availability">
+                            <option value="all">All statuses</option>
+                            <option value="free">Free</option>
+                            <option value="occupied">Occupied</option>
+                            <option value="unknown">Unknown</option>
+                        </select>
+                    </div>
+                </div>
+                <p id="page-error" class="message error" role="alert" hidden></p>
+                <div id="venue-list" class="venue-grid" aria-live="polite">
+                    <p class="message">Loading campus venues…</p>
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <span>Campus Venues</span>
+            <span>Venue information is provided by the campus.</span>
+        </footer>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="./venues.js"></script>
+</body>
+</html>

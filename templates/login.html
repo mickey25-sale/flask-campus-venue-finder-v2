@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Campus Venues Login</title>
+    <style>
+        :root {
+            color-scheme: light;
+            --ink: #172b3a;
+            --muted: #6b7c87;
+            --brand: #3d03b8;
+            --brand-dark: #0c4e43;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            background:
+                radial-gradient(circle at 15% 15%, rgba(52, 144, 115, .12), transparent 32%),
+                radial-gradient(circle at 85% 85%, rgba(52, 144, 115, .1), transparent 30%),
+                #caded9;
+            font-family: Inter, "Segoe UI", Arial, sans-serif;
+            color: var(--ink);
+        }
+        .login-box {
+            width: min(460px, 100%);
+            background: rgb(203, 152, 152);
+            border: 1px solid #84acbe;
+            border-radius: 22px;
+            box-shadow: 0 22px 65px rgba(24, 55, 66, .12);
+            padding: clamp(28px, 7vw, 46px);
+        }
+        .brand-lockup {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 38px;
+        }
+        .brand-mark {
+            display: grid;
+            width: 44px;
+            height: 44px;
+            place-items: center;
+            border-radius: 14px;
+            background: var(--brand);
+            color: white;
+            font-size: 15px;
+            font-weight: 800;
+            letter-spacing: .04em;
+        }
+        .brand-name { font-size: 15px; font-weight: 750; }
+        .brand-caption { color: var(--muted); font-size: 12px; }
+        .eyebrow {
+            margin: 0 0 8px;
+            color: var(--brand);
+            font-size: 12px;
+            font-weight: 800;
+            letter-spacing: .13em;
+            text-transform: uppercase;
+        }
+        h1 {
+            margin: 0;
+            font-size: clamp(28px, 6vw, 34px);
+            letter-spacing: -.04em;
+        }
+        .intro {
+            margin: 10px 0 28px;
+            color: var(--muted);
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+        }
+        label {
+            display: flex;
+            flex-direction: column;
+            gap: 7px;
+            font-size: 13px;
+            font-weight: 700;
+        }
+        input {
+            width: 100%;
+            min-height: 48px;
+            padding: 12px 14px;
+            border: 1px solid #dce5e8;
+            border-radius: 10px;
+            outline: none;
+            background: #fff;
+            color: var(--ink);
+            font: inherit;
+            font-size: 14px;
+            transition: border-color .18s ease, box-shadow .18s ease;
+        }
+        input:focus {
+            border-color: #67a992;
+            box-shadow: 0 0 0 3px rgba(18,107,89,.1);
+        }
+        input::placeholder { color: #9aa8ae; }
+        button {
+            min-height: 48px;
+            margin-top: 4px;
+            border: 0;
+            border-radius: 10px;
+            background: var(--brand);
+            color: white;
+            font: inherit;
+            font-size: 14px;
+            font-weight: 750;
+            cursor: pointer;
+            transition: background .18s ease, transform .18s ease;
+        }
+        button:hover { background: var(--brand-dark); transform: translateY(-1px); }
+        button:focus-visible { outline: 3px solid rgba(18,107,89,.3); outline-offset: 3px; }
+        .error {
+            margin-bottom: 18px;
+            color: #a53d2d;
+            background: #fff5f3;
+            border: 1px solid #f0c2ba;
+            border-radius: 10px;
+            padding: 11px 13px;
+            font-size: 13px;
+        }
+        .secure-note {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 7px;
+            margin: 22px 0 0;
+            color: var(--muted);
+            font-size: 12px;
+        }
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after { transition-duration: .01ms !important; }
+        }
+    </style>
+</head>
+<body>
+    <div class="login-box">
+        <div class="brand-lockup">
+            <div class="brand-mark" aria-hidden="true">CV</div>
+            <div>
+                <div class="brand-name">Campus Venues</div>
+                <div class="brand-caption">Campus space finder</div>
+            </div>
+        </div>
+
+        <p class="eyebrow">Welcome back</p>
+        <h1>Sign in to continue</h1>
+        <p class="intro">Log in to explore campus venues and check their latest availability.</p>
+
+        {% if error %}
+        <div class="error" role="alert">{{ error }}</div>
+        {% endif %}
+
+        <form method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <label>
+                Username
+                <input type="text" name="username" placeholder="Enter your username" autocomplete="username" required autofocus>
+            </label>
+
+            <label>
+                Password
+                <input type="password" name="password" placeholder="Enter your password" autocomplete="current-password" required>
+            </label>
+
+            <button type="submit">Sign in</button>
+        </form>
+
+        <p class="secure-note"><span aria-hidden="true">●</span> Secure access to your campus venue finder</p>
+    </div>
+</body>
+</html>
