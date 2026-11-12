@@ -1,11 +1,29 @@
 const VENUES_CSV_URL =
     'https://docs.google.com/spreadsheets/d/e/2PACX-1vROiTq-W_OdNM2ZoWur6yJFHOOYaMBxMxis4cybVBH6YPeNdpRzjpe2GGjHxk_ziAOTs4iGF7k3Ajpz/pub?gid=0&single=true&output=csv';
-const REFRESH_INTERVAL_MS = 60_000;
+const REFRESH_INTERVAL_MS = 30_000;
 
-const map = L.map('map').setView([0.50396, 34.12548], 15);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; OpenStreetMap contributors'
+const LEAFLET_ASSET_PATH = 'https://unpkg.com/leaflet@1.9.4/dist/images/';
+L.Icon.Default.mergeOptions({
+    imagePath: LEAFLET_ASSET_PATH,
+    iconRetinaUrl: 'marker-icon-2x.png',
+    iconUrl: 'marker-icon.png',
+    shadowUrl: 'marker-shadow.png'
+});
+
+const mapElement = document.getElementById('map');
+const map = mapElement._campusVenueMap ||
+    L.map(mapElement, { maxZoom: 19 }).setView([0.50396, 34.12548], 15);
+mapElement._campusVenueMap = map;
+
+const markerGroup = map._campusVenueMarkerGroup || L.markerClusterGroup({
+    showCoverageOnHover: false,
+    spiderfyOnMaxZoom: true
 }).addTo(map);
+map._campusVenueMarkerGroup = markerGroup;
+map._campusVenueTileLayer || (map._campusVenueTileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '&copy; OpenStreetMap contributors'
+}).addTo(map));
 
 const venueList = document.getElementById('venue-list');
 const searchInput = document.getElementById('search-input');
@@ -67,33 +85,32 @@ function parseCsv(text) {
 
 function normalizeStatus(status) {
     const normalized = (status || '').trim().toLowerCase();
-    return ['free', 'occupied'].includes(normalized) ? normalized : 'unknown';
+    if (normalized === 'free') return 'available';
+    return ['available', 'occupied', 'maintenance'].includes(normalized)
+        ? normalized
+        : 'unknown';
 }
 
 function coordinatesFor(venue) {
-    const latitude = Number(venue.latitude);
-    const longitude = Number(venue.longitude);
+    if (!venue || venue.latitude == null || venue.longitude == null) {
+        return null;
+    }
+
+    const latitudeValue = String(venue.latitude).trim();
+    const longitudeValue = String(venue.longitude).trim();
+    if (!latitudeValue || !longitudeValue) {
+        return null;
+    }
+
+    const latitude = Number(latitudeValue);
+    const longitude = Number(longitudeValue);
     if (
-        !venue.latitude || !venue.longitude ||
         !Number.isFinite(latitude) || !Number.isFinite(longitude) ||
         Math.abs(latitude) > 90 || Math.abs(longitude) > 180
     ) {
         return null;
     }
     return [latitude, longitude];
-}
-
-function directionsUrl(venue) {
-    const coordinates = coordinatesFor(venue);
-    const destination = coordinates
-        ? coordinates.join(',')
-        : `${venue.venue_name || ''} ${venue.location || ''}`.trim();
-    const query = new URLSearchParams({
-        api: '1',
-        destination,
-        travelmode: 'walking'
-    });
-    return `https://www.google.com/maps/dir/?${query}`;
 }
 
 function formatUpdatedAt(value) {
@@ -133,16 +150,9 @@ function createVenueCard(venue, index) {
         makeElement('p', 'venue-location', venue.location || 'Location not specified')
     );
 
-    const directions = makeElement('a', 'directions', '↗ Get directions');
-    directions.href = directionsUrl(venue);
-    directions.target = '_blank';
-    directions.rel = 'noopener noreferrer';
-    directions.addEventListener('click', event => event.stopPropagation());
-    card.append(directions);
-
     const footer = makeElement('div', 'venue-footer');
     footer.append(
-        makeElement('span', `status ${status}`, status[0].toUpperCase() + status.slice(1)),
+        makeElement('span', `status ${status}`, status.toUpperCase()),
         makeElement('span', 'updated', `Updated ${formatUpdatedAt(venue.updated_at)}`)
     );
     card.append(footer);
@@ -156,8 +166,7 @@ function focusVenue(card, index) {
     card.classList.add('selected');
     const marker = markers.get(index);
     if (marker) {
-        map.setView(marker.getLatLng(), 18);
-        marker.openPopup();
+        markerGroup.zoomToShowLayer(marker, () => marker.openPopup());
     }
 }
 
@@ -165,42 +174,44 @@ function createPopup(venue) {
     const popup = makeElement('div');
     const name = makeElement('strong', '', venue.venue_name || 'Unnamed venue');
     const location = makeElement('div', '', venue.location || 'Location not specified');
-    const status = makeElement('div', '', `Status: ${normalizeStatus(venue.status)}`);
-    const directions = makeElement('a', '', 'Get directions');
-    directions.href = directionsUrl(venue);
-    directions.target = '_blank';
-    directions.rel = 'noopener noreferrer';
-    popup.append(name, location, status, directions);
+    const status = makeElement('div', '', `Status: ${normalizeStatus(venue.status).toUpperCase()}`);
+    popup.append(name, location, status);
     return popup;
 }
 
 function updateMap() {
-    markers.forEach(marker => map.removeLayer(marker));
+    markerGroup.clearLayers();
     markers.clear();
 
     venues.forEach((venue, index) => {
         const coordinates = coordinatesFor(venue);
         if (!coordinates) return;
 
-        const status = normalizeStatus(venue.status);
-        const color = status === 'free' ? '#25a66a' :
-            status === 'occupied' ? '#e36a56' : '#d49222';
-        const marker = L.circleMarker(coordinates, {
-            radius: 9,
-            color,
-            fillColor: color,
-            fillOpacity: 0.85
-        }).addTo(map);
+        const marker = L.marker(coordinates, {
+            icon: L.divIcon({
+                className: 'venue-marker-wrapper',
+                html: `<span class="venue-map-marker ${statusClassFor(venue.status)}" aria-hidden="true"></span>`,
+                iconSize: [23, 23],
+                iconAnchor: [11, 11],
+                popupAnchor: [0, -11]
+            })
+        });
         marker.bindPopup(createPopup(venue));
+        markerGroup.addLayer(marker);
         markers.set(index, marker);
     });
 
     if (markers.size) {
-        map.fitBounds(L.featureGroup([...markers.values()]).getBounds(), {
+        map.fitBounds(markerGroup.getBounds(), {
             padding: [28, 28],
             maxZoom: 17
         });
     }
+}
+
+function statusClassFor(status) {
+    const className = normalizeStatus(status);
+    return /^[a-z0-9_-]+$/.test(className) ? className : 'unknown';
 }
 
 function renderVenues() {
@@ -230,10 +241,12 @@ function renderVenues() {
 
 function updateSummary() {
     document.getElementById('total-count').textContent = venues.length;
-    document.getElementById('free-count').textContent =
-        venues.filter(venue => normalizeStatus(venue.status) === 'free').length;
+    document.getElementById('available-count').textContent =
+        venues.filter(venue => normalizeStatus(venue.status) === 'available').length;
     document.getElementById('occupied-count').textContent =
         venues.filter(venue => normalizeStatus(venue.status) === 'occupied').length;
+    document.getElementById('maintenance-count').textContent =
+        venues.filter(venue => normalizeStatus(venue.status) === 'maintenance').length;
 }
 
 async function loadVenues() {
@@ -257,6 +270,13 @@ async function loadVenues() {
         if (!venues.length) venueList.replaceChildren();
     }
 }
+
+if ('ResizeObserver' in window) {
+    new ResizeObserver(() => map.invalidateSize()).observe(mapElement);
+} else {
+    window.addEventListener('resize', () => map.invalidateSize());
+}
+window.requestAnimationFrame(() => map.invalidateSize());
 
 searchInput.addEventListener('input', renderVenues);
 statusFilter.addEventListener('change', renderVenues);

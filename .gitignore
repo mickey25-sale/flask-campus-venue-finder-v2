@@ -1,6 +1,49 @@
+# Python cache files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environment
 .venv/
 venv/
-_pycache_
-*.pyc
+env/
+
+# Environment variables and secrets
 .env
-venues.db
+.env.*
+!.env.example
+.google-credentials/
+*.pem
+*.key
+*service-account*.json
+*credentials*.json
+
+# Test and coverage files
+.pytest_cache/
+.coverage
+htmlcov/
+
+# IDE settings
+.vscode/
+.idea/
+
+# Operating system files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+
+# SQLite databases
+*.sqlite
+*.sqlite3
+*.db
+
+# Temporary files
+*.tmp
+*.bak
+app.py.backup
+app.py.stable
+# Accidental empty nested repository
+flask-venue-finder/
