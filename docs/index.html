@@ -10,6 +10,14 @@
         rel="stylesheet"
         href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
     >
+    <link
+        rel="stylesheet"
+        href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"
+    >
+    <link
+        rel="stylesheet"
+        href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"
+    >
     <link rel="stylesheet" href="./venues.css">
 </head>
 <body>
@@ -37,13 +45,17 @@
                     <span class="summary-icon" aria-hidden="true">⌖</span>
                     <span><strong id="total-count">—</strong><small>Campus venues</small></span>
                 </article>
-                <article class="summary-card free-card">
+                <article class="summary-card available-card">
                     <span class="summary-icon" aria-hidden="true">✓</span>
-                    <span><strong id="free-count">—</strong><small>Currently free</small></span>
+                    <span><strong id="available-count">—</strong><small>Available</small></span>
                 </article>
                 <article class="summary-card occupied-card">
                     <span class="summary-icon" aria-hidden="true">↗</span>
-                    <span><strong id="occupied-count">—</strong><small>Currently occupied</small></span>
+                    <span><strong id="occupied-count">—</strong><small>Occupied</small></span>
+                </article>
+                <article class="summary-card maintenance-card">
+                    <span class="summary-icon" aria-hidden="true">!</span>
+                    <span><strong id="maintenance-count">—</strong><small>Maintenance</small></span>
                 </article>
             </section>
 
@@ -59,8 +71,9 @@
                     <div id="map" aria-label="Map of campus venues"></div>
                     <div class="map-footer">
                         <div class="legend" aria-label="Availability legend">
-                            <span><i class="dot free"></i> Free</span>
+                            <span><i class="dot available"></i> Available</span>
                             <span><i class="dot occupied"></i> Occupied</span>
+                            <span><i class="dot maintenance"></i> Maintenance</span>
                             <span><i class="dot unknown"></i> Unknown</span>
                         </div>
                         <span class="refresh-meta" id="last-updated">Waiting for data</span>
@@ -81,9 +94,9 @@
                         </label>
                         <select id="status-filter" aria-label="Filter venues by availability">
                             <option value="all">All statuses</option>
-                            <option value="free">Free</option>
+                            <option value="available">Available</option>
                             <option value="occupied">Occupied</option>
-                            <option value="unknown">Unknown</option>
+                            <option value="maintenance">Maintenance</option>
                         </select>
                     </div>
                 </div>
@@ -101,6 +114,7 @@
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
     <script src="./venues.js"></script>
 </body>
 </html>

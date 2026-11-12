@@ -5,18 +5,24 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <title>Campus Venues</title>
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-
     <!-- Leaflet map styling -->
     <link
         rel="stylesheet"
         href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
     >
+    <link
+        rel="stylesheet"
+        href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"
+    >
+    <link
+        rel="stylesheet"
+        href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"
+    >
 
     <link rel="stylesheet" href="{{ url_for('static', filename='css/venues.css') }}">
 </head>
 
-<body data-is-admin="{{ 'true' if is_admin else 'false' }}">
+<body>
 <div class="container">
     <nav class="topbar" aria-label="Main navigation">
         <div class="brand-lockup">
@@ -29,40 +35,122 @@
         {% if current_user %}
         <div class="account">
             <div class="account-avatar" aria-hidden="true">{{ current_user[0]|upper }}</div>
-            <span class="account-name">Signed in as <strong>{{ current_user }}</strong></span>
-            <form class="logout-form" method="POST" action="{{ url_for('logout') }}">
+            <span class="account-name">Administrator <strong>{{ current_user }}</strong></span>
+            <form class="logout-form" method="POST" action="{{ url_for('admin_logout') }}">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button class="logout-button" type="submit">Log out</button>
             </form>
         </div>
+        {% else %}
+        <a class="admin-login-link" href="{{ url_for('admin_login') }}">Admin sign in</a>
         {% endif %}
     </nav>
 
-    <main>
+    <main id="appMain" data-is-admin="{{ 'true' if is_admin else 'false' }}" data-csrf-token="{{ csrf_token() }}">
         <section class="hero">
             <p class="eyebrow">Find your place on campus</p>
             <h1>Make space for what matters.</h1>
             <p class="hero-copy">Explore campus venues, check their availability, and find the right place for your next class or study session.</p>
         </section>
 
+        {% if is_admin %}
+        <section class="admin-panel" aria-labelledby="adminHeading">
+            <h2 id="adminHeading">Administrator tools</h2>
+            <p>Add, edit, or remove venues. Changes are saved to the Google Sheet.</p>
+            <form id="createVenueForm" class="admin-form">
+                <label>Venue name <input name="venue_name" maxlength="200" required></label>
+                <label>Location <input name="location" maxlength="300"></label>
+                <label>Status
+                    <select name="status" required>
+                        {% for status_option in status_options %}
+                        <option value="{{ status_option }}">{{ status_option }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+                <label>Latitude <input name="latitude" inputmode="decimal" placeholder="Optional"></label>
+                <label>Longitude <input name="longitude" inputmode="decimal" placeholder="Optional"></label>
+                <button type="submit">Add venue</button>
+            </form>
+            <p id="adminNotice" class="admin-notice" role="status" aria-live="polite" hidden></p>
+        </section>
+        {% endif %}
+
+        {% if can_manage_admins %}
+        <section class="admin-panel account-management" aria-labelledby="accountsHeading">
+            <div class="account-management-heading">
+                <div>
+                    <h2 id="accountsHeading">Administrator management</h2>
+                    <p>Create accounts, control access, and review administrator activity.</p>
+                </div>
+                <button id="refreshAdminAccounts" class="admin-secondary-button" type="button">Refresh</button>
+            </div>
+            <form id="createAdminForm" class="admin-account-form">
+                <label>Full name
+                    <input name="full_name" maxlength="150" autocomplete="name" required>
+                </label>
+                <label>Email
+                    <input name="email" type="email" maxlength="254" autocomplete="email" required>
+                </label>
+                <label>Temporary password
+                    <input name="password" type="password" autocomplete="new-password" minlength="12" required>
+                </label>
+                <label>Role
+                    <select name="role" required>
+                        <option value="admin">Administrator</option>
+                        <option value="admin_manager">Administrator manager</option>
+                    </select>
+                </label>
+                <button type="submit">Create account</button>
+                <p class="account-form-help">Use at least 12 characters with uppercase and lowercase letters, a number, and a special character. The password is never shown again.</p>
+            </form>
+            <p id="adminAccountsNotice" class="admin-notice" role="status" aria-live="polite" hidden></p>
+            <div class="admin-account-list-wrap">
+                <table class="admin-account-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Administrator</th>
+                            <th scope="col">Role</th>
+                            <th scope="col">Status</th>
+                            <th scope="col">Created</th>
+                            <th scope="col">Last login</th>
+                            <th scope="col">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="adminAccountList">
+                        <tr><td colspan="6">Loading administrator accounts...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <h3 class="audit-heading">Recent administrator activity</h3>
+            <ol id="adminAuditLog" class="admin-audit-list">
+                <li>Loading audit history...</li>
+            </ol>
+        </section>
+        {% endif %}
+
         <section class="summary-grid" aria-label="Venue availability summary">
             <article class="summary-card">
                 <div class="summary-icon" aria-hidden="true">⌖</div>
                 <div><span class="summary-value" id="totalCount">0</span><span class="summary-label">Campus venues</span></div>
             </article>
-            <article class="summary-card free-card">
+            <article class="summary-card available-card">
                 <div class="summary-icon" aria-hidden="true">✓</div>
-                <div><span class="summary-value" id="freeCount">0</span><span class="summary-label">Currently free</span></div>
+                <div><span class="summary-value" id="availableCount">0</span><span class="summary-label">Available</span></div>
             </article>
             <article class="summary-card occupied-card">
                 <div class="summary-icon" aria-hidden="true">↗</div>
-                <div><span class="summary-value" id="occupiedCount">0</span><span class="summary-label">Currently occupied</span></div>
+                <div><span class="summary-value" id="occupiedCount">0</span><span class="summary-label">Occupied</span></div>
+            </article>
+            <article class="summary-card maintenance-card">
+                <div class="summary-icon" aria-hidden="true">!</div>
+                <div><span class="summary-value" id="maintenanceCount">0</span><span class="summary-label">Maintenance</span></div>
             </article>
         </section>
 
         {% if error %}
         <p class="error-state" role="alert">{{ error }}</p>
         {% endif %}
+        <p class="error-state" id="syncWarning" role="alert" {% if not sync_warning %}hidden{% endif %}>{{ sync_warning or '' }}</p>
 
         <section aria-labelledby="mapHeading">
             <div class="section-heading">
@@ -76,9 +164,10 @@
                 <div id="map" aria-label="Map showing campus venue locations"></div>
                 <div class="map-footer">
                     <div class="map-legend" aria-label="Venue status legend">
-                        <span><i class="legend-dot free"></i> Free</span>
+                        <span><i class="legend-dot available"></i> Available</span>
                         <span><i class="legend-dot occupied"></i> Occupied</span>
-                        <span><i class="legend-dot"></i> Unknown</span>
+                        <span><i class="legend-dot maintenance"></i> Maintenance</span>
+                        <span><i class="legend-dot unknown"></i> Unknown</span>
                     </div>
                     <p class="refresh-meta" id="lastChecked">Updated: waiting for data</p>
                 </div>
@@ -89,98 +178,39 @@
             <div class="section-heading">
                 <div>
                     <h2 id="venuesHeading">Browse venues</h2>
-                    <p>Search by name or location, or filter by availability.</p>
+                    <p>Live published Google Sheets data, refreshed every 30 seconds.</p>
                 </div>
-                <div class="venue-section-tools">
-                    {% if is_admin %}
-                    <button class="primary-button" id="addVenueButton" type="button">+ Add venue</button>
-                    {% endif %}
-                    <div class="filters">
-                        <div class="search-wrap">
-                            <input type="search" id="search" placeholder="Search venues..." aria-label="Search venues">
-                        </div>
-                        <select id="statusFilter" aria-label="Filter venues by status">
-                            <option value="All">All statuses</option>
-                            <option value="Free">Free</option>
-                            <option value="Occupied">Occupied</option>
-                            <option value="Unknown">Unknown</option>
-                        </select>
+                <div class="filters">
+                    <div class="search-wrap">
+                        <input type="search" id="search" placeholder="Search venues..." aria-label="Search venues">
                     </div>
+                    <select id="statusFilter" aria-label="Filter venues by status">
+                        <option value="All">All statuses</option>
+                        {% for status_option in status_filter_options %}
+                        <option value="{{ status_option }}">{{ status_option }}</option>
+                        {% endfor %}
+                    </select>
                 </div>
             </div>
-            {% if is_admin %}
-            <p id="adminMessage" role="status" aria-live="polite"></p>
-            {% endif %}
             <div id="venueList">
         {% for venue in venues %}
         {% set status = venue.get('status', 'Unknown')|trim %}
-        {% set status_class = status|lower if status|lower in ['free', 'occupied'] else 'unknown' %}
-        {% set destination = (venue.get('latitude', '') ~ ',' ~ venue.get('longitude', '')) if venue.get('latitude') and venue.get('longitude') else (venue.get('venue_name', '') ~ ' ' ~ venue.get('location', '')) %}
+        {% set status_key = status|upper %}
+        {% set status_class = status_key|lower if status_key in status_options else 'unknown' %}
 
-                <article class="venue" data-venue-id="{{ venue.get('id') }}" onclick="if (!event.target.closest('.venue-actions')) focusVenueOnMap(this)" tabindex="0" role="button" aria-label="Show {{ venue.get('venue_name', 'Unnamed venue') }} on map">
+                <article class="venue" data-venue-id="{{ venue.get('id') }}" tabindex="0" role="button" aria-label="Show {{ venue.get('venue_name', 'Unnamed venue') }} on map">
             <h3>{{ venue.get('venue_name', 'Unnamed venue') }}</h3>
                     <p class="venue-location">{{ venue.get('location', 'Not specified') }}</p>
-                    <a class="venue-directions" href="https://www.google.com/maps/dir/?api=1&amp;destination={{ destination|urlencode }}&amp;travelmode=walking" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">↗ Get directions</a>
                     <div class="venue-meta">
-                        <span class="venue-status {{ status_class }}">{{ status or 'Unknown' }}</span>
+                        <span class="venue-status {{ status_class }}">{{ status_key }}</span>
                         <p class="venue-updated">Updated {{ venue.get('updated_at', 'Not specified') }}</p>
                     </div>
-                    {% if is_admin %}
-                    <div class="venue-actions">
-                        <select class="availability-select" aria-label="Update availability for {{ venue.get('venue_name', 'venue') }}" data-action="availability">
-                            <option value="Free" {% if status|lower == 'free' %}selected{% endif %}>Free</option>
-                            <option value="Occupied" {% if status|lower == 'occupied' %}selected{% endif %}>Occupied</option>
-                            <option value="Unknown" {% if status|lower not in ['free', 'occupied'] %}selected{% endif %}>Unknown</option>
-                        </select>
-                        <button class="action-button" type="button" data-action="edit">Edit</button>
-                        <button class="action-button delete" type="button" data-action="delete">Delete</button>
-                    </div>
-                    {% endif %}
                 </article>
         {% endfor %}
                 {% if not venues %}
-                <p class="empty-state">No venues yet. Import the venue CSV to populate this list.</p>
+                <p class="empty-state">No venues were found in the published Google Sheet.</p>
                 {% endif %}
     </div>
-
-    {% if is_admin %}
-    <dialog id="venueDialog" aria-labelledby="venueDialogTitle">
-        <form class="dialog-content" id="venueForm">
-            <div class="dialog-heading">
-                <div>
-                    <h2 id="venueDialogTitle">Add a venue</h2>
-                    <p>Enter the venue details and its current availability.</p>
-                </div>
-                <button class="dialog-close" type="button" id="closeVenueDialog" aria-label="Close dialog">&times;</button>
-            </div>
-            <div class="venue-form-grid">
-                <label class="form-wide">Venue name
-                    <input name="venue_name" maxlength="200" required>
-                </label>
-                <label class="form-wide">Location
-                    <input name="location" maxlength="300" required>
-                </label>
-                <label>Status
-                    <select name="status" required>
-                        <option value="Free">Free</option>
-                        <option value="Occupied">Occupied</option>
-                        <option value="Unknown">Unknown</option>
-                    </select>
-                </label>
-                <label>Latitude
-                    <input name="latitude" type="number" min="-90" max="90" step="any" placeholder="Optional">
-                </label>
-                <label>Longitude
-                    <input name="longitude" type="number" min="-180" max="180" step="any" placeholder="Optional">
-                </label>
-            </div>
-            <div class="dialog-actions">
-                <button class="secondary-button" type="button" id="cancelVenueDialog">Cancel</button>
-                <button class="primary-button" type="submit" id="saveVenueButton">Save venue</button>
-            </div>
-        </form>
-    </dialog>
-    {% endif %}
 
     <footer>
         <span>&copy; {{ current_year }} Campus Venues</span>
@@ -192,8 +222,12 @@
 
 <!-- Load Leaflet before using its map functions -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
 
     <script src="{{ url_for('static', filename='js/venues.js') }}"></script>
+    {% if can_manage_admins %}
+    <script src="{{ url_for('static', filename='js/admin-management.js') }}"></script>
+    {% endif %}
 
 </body>
 </html>
