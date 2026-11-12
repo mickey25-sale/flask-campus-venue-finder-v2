@@ -44,5 +44,6 @@ desktop.ini
 *.tmp
 *.bak
 app.py.backup
-app.py.stable# Accidental empty nested repository
+app.py.stable
+# Accidental empty nested repository
 flask-venue-finder/
